@@ -1,6 +1,6 @@
 # Deploy a highly available and scalable Wordpress on Azure VMSS
 
-This example scenario is aplicable to show how to deploy a highly available and scalable Wordpress on Azure using Virtual Machine Scale Sets.
+This example scenario is a guidance on how to deploy a highly available and scalable Wordpress on Azure using Virtual Machine Scale Sets.
 
 # Architecture
 
