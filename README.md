@@ -361,3 +361,38 @@ Once you log in, you will be taken to the WordPress administration dashboard:
 
 ![admin_screen.png](admin_screen.png)
 
+# Change manually the capacity of a scale set
+
+When you created a Virtual Machine Scale, three VM instances were deployed by the parameter --instance-count 3. To increase or decrease the number of VM instances in your existing scale set, you can manually change the capacity. The scale set creates or removes the required number of VM instances then will distribute the traffic.
+
+To manually increase or decrease the number of VM instances in the scale set, use az vmss scale. The following example sets the number of VM instances in your scale set to 5:
+```
+az vmss scale  --name myScaleSet --new-capacity 5 --resource-group $resourceGroupName
+```
+# Using autoscale profile to change the capacity automatically
+```
+az monitor autoscale create \
+  --resource-group $resourceGroupName \
+  --resource $ScaleSetName \
+  --resource-type Microsoft.Compute/virtualMachineScaleSets \
+  --name autoscale \
+  --min-count 3 \
+  --max-count 10 \
+  --count 3
+```
+# Create a rule to autoscale out
+```
+az monitor autoscale rule create \
+  --resource-group $resourceGroupName \
+  --autoscale-name autoscale \
+  --condition "Percentage CPU > 70 avg 5m" \
+  --scale out 3
+```
+# Create a rule to autoscale in
+```
+az monitor autoscale rule create \
+  --resource-group $resourceGroupName \
+  --autoscale-name autoscale \
+  --condition "Percentage CPU < 30 avg 5m" \
+  --scale in 1
+```
