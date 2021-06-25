@@ -234,7 +234,7 @@ FLUSH PRIVILEGES;
 EOFMYSQL
 ```
 # Remove the firewall rule previously created to create the database from AZ CLI. 
-As the access from VMs to the database will use the private endpoint connection, we don't need it anymore. Was required just to be able to connet to MySQL from AZ CLI and crate the Wordpress database.
+As the access from VMs to the database will use the private endpoint connection, we don't need it anymore. Was required just to be able to connet to MySQL from AZ CLI and create the Wordpress database.
 ```
 az mysql server firewall-rule delete --name AllowAll --resource-group $resourceGroupName --server-name $mysqlServerName -y
 ```
