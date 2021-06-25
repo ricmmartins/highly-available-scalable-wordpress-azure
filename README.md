@@ -82,7 +82,8 @@ az network vnet subnet create \
   --sku Standard \
   --zone 1 2 3
   ```
-  # Update the backend subnet  to disable private endpoint network policies for private endpoints
+  # Update the backend subnet 
+  Is required to disable network policies for private endpoints
   ```
   az network vnet subnet update \
     --name $BackendSubnetName \
@@ -161,11 +162,13 @@ az network private-endpoint dns-zone-group create \
    --private-dns-zone $privateDNSZoneNameStorage \
    --zone-name storage
 ```
-# Disable secure transfer setting on Storage Account as isn't supported on NFS protocol
+# Disable secure transfer setting on Storage Account
+ The secure transfer setting isn't supported on NFS protocol, so it's required to disable it:
 ```
 az storage account update -g $resourceGroupName -n $storageAccountName --https-only false
 ```
-# Register your subscription to use the NFS 4.1 protocol, as NFS is a preview feature at this time
+# Register your subscription to use the NFS 4.1 protocol
+As NFS is a preview feature at this time, you need register your subscription to be able to use.
 ```
 az feature register \
     --name AllowNfsFileShares \
@@ -214,7 +217,8 @@ az network private-endpoint dns-zone-group create \
    --private-dns-zone $privateDNSZoneNameDatabase \
    --zone-name mysql
 ```
-# Create a firewall rule on Azure Database for MySQL to allow create the database from AZ CLI
+# Create a firewall rule on Azure Database for MySQL
+This will allow connect on Azure Database from AZ CLI to create the database 
 ```
 az mysql server firewall-rule create --resource-group $resourceGroupName --server $mysqlServerName --name "AllowAll" --start-ip-address 0.0.0.0 --end-ip-address 0.0.0.0
 ```
@@ -227,11 +231,13 @@ GRANT ALL PRIVILEGES ON wordpressdb . * TO 'db_user'@'%';
 FLUSH PRIVILEGES;
 EOFMYSQL
 ```
-# Remove the firewall rule previously created to create the database from AZ CLI. (The access from the VMs to the database will use the private endpoint connection)
+# Remove the firewall rule previously created to create the database from AZ CLI. 
+As the access from VMs to the database will use the private endpoint connection, we don't need it anymore. Was required just to be able to connet to MySQL from AZ CLI and crate the Wordpress database.
 ```
 az mysql server firewall-rule delete --name AllowAll --resource-group $resourceGroupName --server-name $mysqlServerName -y
 ```
 # Generate cloud-init
+At this step the cloud-init will be generated to create the configuration inside the VMs and install required packages.
 ```
 cat <<EOF > cloud-init.txt
 #cloud-config
