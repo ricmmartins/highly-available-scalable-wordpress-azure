@@ -10,3 +10,12 @@ To connect the VMs to the MySQL and NFS Share services, two [Azure Private Endpo
 
 ![appgw-wordpress.png](appgw-wordpress.png)
 
+# Prerequisites
+
+* Use the Bash environment in [Azure Cloud Shell](https://docs.microsoft.com/en-us/azure/cloud-shell/quickstart).
+
+[![launch-cloud-shell.png)](launch-cloud-shell.png)](http://shell.azure.com/)
+
+* If you prefer, [install](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli) the Azure CLI to run CLI reference commands.
+
+* This tutorial requires version 2.0.4 or later of the Azure CLI. If using Azure Cloud Shell, the latest version is already installed.
