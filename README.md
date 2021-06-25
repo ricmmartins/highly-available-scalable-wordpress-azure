@@ -110,7 +110,7 @@ az network application-gateway create \
   --public-ip-address $AppGWPublicIPAddressName \
   --zones 1 2 3
   ```
-# Create FileStorage Accout
+# Create FileStorage Account
 ```
 az storage account create \
     --resource-group $resourceGroupName \
