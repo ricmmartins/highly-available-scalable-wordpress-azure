@@ -346,7 +346,7 @@ az network public-ip show \
  ```
 # Finish the Wordpress installation
 
-_Please note the complete setup of the VMs configuration can take up to 5 minutes. So if you try access and got the **"Welcome to nginx!"** message, take another cup of coffee and try again_
+_Please note the complete setup of the VMs configuration can take up to 5 minutes. So if you try access and got the **"Welcome to nginx!"** message, it means that the setup wasn't finished yet. So take another cup of coffee before try access again =D_
 
 In your web browser, navigate to the Application Gateway Public IP and complete the Wordpress installation through the web interface:
 ```
