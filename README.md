@@ -336,7 +336,7 @@ az vmss create \
   --backend-pool-name appGatewayBackendPool \
   --zones 1 2 3
  ```
- # Get the Application Gateway Public IP
+  # Get the Application Gateway Public IP
 ```
 az network public-ip show \
   --resource-group $resourceGroupName \
@@ -345,6 +345,9 @@ az network public-ip show \
   --output tsv
  ```
 # Finish the Wordpress installation
+
+_Please note the complete setup of the VMs configuration can take up to 5 minutes. So if you try access and got the **"Welcome to nginx!"** message, take another cup of coffee and try again_
+
 In your web browser, navigate to the Application Gateway Public IP and complete the Wordpress installation through the web interface:
 ```
 http://application_gateway_public_ip
