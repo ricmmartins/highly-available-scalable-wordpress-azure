@@ -141,4 +141,223 @@ az network private-endpoint create \
     --connection-name $privateConnectionNameStorage \
     --group-id file
 ```
+# Configure the private DNS zone for Azure FileStorage
+```
+az network private-dns zone create \
+    --resource-group $resourceGroupName \
+    --name $privateDNSZoneNameStorage
+
+az network private-dns link vnet create \
+    --resource-group  $resourceGroupName \
+    --zone-name $privateDNSZoneNameStorage \
+    --name $privateDNSLinkNameStorage \
+    --virtual-network $VNETName \
+    --registration-enabled false
+
+az network private-endpoint dns-zone-group create \
+   --resource-group $resourceGroupName \
+   --endpoint-name $privateEndpointNameStorage \
+   --name $privateDNSZoneGroupNameStorage \
+   --private-dns-zone $privateDNSZoneNameStorage \
+   --zone-name storage
+```
+# Disable secure transfer setting on Storage Account as isn't supported on NFS protocol
+```
+az storage account update -g $resourceGroupName -n $storageAccountName --https-only false
+```
+# Register your subscription to use the NFS 4.1 protocol, as NFS is a preview feature at this time
+```
+az feature register \
+    --name AllowNfsFileShares \
+    --namespace Microsoft.Storage \
+    --subscription $subscriptionId
+
+az provider register \
+    --namespace Microsoft.Storage
+```
+# Create MySQL
+```
+az mysql server create --resource-group $resourceGroupName --name $mysqlServerName --location $region --admin-user $mysqlAdmin --admin-password $mysqlPassword --sku-name GP_Gen5_2 --ssl-enforcement Disabled
+```
+# Create a Private Endpoint to use with Azure Database for MySQL
+```
+idmysql=$(az mysql server list \
+    --resource-group $resourceGroupName \
+    --query '[].[id]' \
+    --output tsv)
+
+
+az network private-endpoint create \
+    --name $privateEndpointNameDatabase \
+    --resource-group $resourceGroupName \
+    --vnet-name $VNETName \
+    --subnet $BackendSubnetName \
+    --private-connection-resource-id $idmysql \
+    --group-id mysqlServer \
+    --connection-name $privateConnectionNameDatabase
+```
+# Configure the Private DNS Zone for Azure Database for MySQL
+```
+az network private-dns zone create --resource-group $resourceGroupName \
+   --name  $privateDNSZoneNameDatabase 
+
+az network private-dns link vnet create --resource-group $resourceGroupName \
+   --zone-name  $privateDNSZoneNameDatabase \
+   --name $privateDNSLinkNameDatabase \
+   --virtual-network $VNETName \
+   --registration-enabled false
+
+az network private-endpoint dns-zone-group create \
+   --resource-group $resourceGroupName \
+   --endpoint-name $privateEndpointNameDatabase \
+   --name $privateDNSZoneGroupNameDatabase \
+   --private-dns-zone $privateDNSZoneNameDatabase \
+   --zone-name mysql
+```
+# Create a firewall rule on Azure Database for MySQL to allow create the database from AZ CLI
+```
+az mysql server firewall-rule create --resource-group $resourceGroupName --server $mysqlServerName --name "AllowAll" --start-ip-address 0.0.0.0 --end-ip-address 0.0.0.0
+```
+# Create a database with a non-admin user in Azure Database for MySQL
+```
+mysql -h $mysqlServerName.mysql.database.azure.com -u$mysqlAdmin@$mysqlServerName -p$mysqlPassword<<EOFMYSQL
+CREATE DATABASE wordpressdb;
+CREATE USER 'db_user'@'%' IDENTIFIED BY 'db_user-weakPassword';
+GRANT ALL PRIVILEGES ON wordpressdb . * TO 'db_user'@'%';
+FLUSH PRIVILEGES;
+EOFMYSQL
+```
+# Remove the firewall rule previously created to create the database from AZ CLI. (The access from the VMs to the database will use the private endpoint connection)
+```
+az mysql server firewall-rule delete --name AllowAll --resource-group $resourceGroupName --server-name $mysqlServerName -y
+```
+# Generate cloud-init
+```
+cat <<EOF > cloud-init.txt
+#cloud-config
+package_upgrade: true
+packages:
+  - nginx
+  - php-curl
+  - php-gd
+  - php-intl
+  - php-mbstring
+  - php-soap
+  - php-xml
+  - php-xmlrpc
+  - php-zip
+  - php-fpm
+  - php-mysql
+  - nfs-common
+
+write_files:
+- path: /tmp/wp-config.php
+  content: |
+      <?php
+      define('DB_NAME', '$dbname');
+      define('DB_USER', '$dbuser');
+      define('DB_PASSWORD', '$dbpassword');
+      define('DB_HOST', '$mysqlServerName.mysql.database.azure.com');
+      \$table_prefix = 'wp_';
+      if ( ! defined( 'ABSPATH' ) ) {
+        define( 'ABSPATH', __DIR__ . '/' );
+      }
+      require_once ABSPATH . 'wp-settings.php';
+      ?>
+
+
+- path: /tmp/wordpress.conf
+  content: |
+   server {
+      listen 80;
+      server_name _;
+      root /data/nfs/wordpress;
+
+      index index.html index.htm index.php;
+
+      location / {
+          try_files \$uri \$uri/ /index.php\$is_args\$args;
+      }
+
+      location ~ \.php$ {
+          include snippets/fastcgi-php.conf;
+          fastcgi_pass unix:/var/run/php/php7.2-fpm.sock;
+      }
+
+      location = /favicon.ico { log_not_found off; access_log off; }
+      location = /robots.txt { log_not_found off; access_log off; allow all; }
+      location ~* \.(css|gif|ico|jpeg|jpg|js|png)$ {
+        expires max;
+        log_not_found off;
+      }
+
+      location ~ /\.ht {
+          deny all;
+      }
+
+   }
+
+runcmd: 
+  - mkdir -p /data/nfs/wordpress
+  - mount -t nfs $storageAccountName.file.core.windows.net:/$storageAccountName/$shareName /data/nfs -o vers=4,minorversion=1,sec=sys
+  - wget http://wordpress.org/latest.tar.gz -P /data/nfs/wordpress
+  - tar xzvf /data/nfs/wordpress/latest.tar.gz -C /data/nfs/wordpress --strip-components=1
+  - cp /tmp/wp-config.php /data/nfs/wordpress/wp-config.php
+  - cp /tmp/wordpress.conf  /etc/nginx/conf.d/wordpress.conf
+  - chown -R www-data:www-data /data/nfs/wordpress
+  - rm /etc/nginx/sites-enabled/default
+  - rm /etc/nginx/sites-available/default
+  - systemctl restart nginx
+EOF
+```
+# Create a Virtual Machine Scale Set
+```
+az vmss create \
+  --name $ScaleSetName \
+  --resource-group $resourceGroupName \
+  --image UbuntuLTS \
+  --admin-username azureuser \
+  --generate-ssh-keys \
+  --instance-count 3 \
+  --vnet-name $VNETName \
+  --subnet $BackendSubnetName \
+  --vm-sku Standard_DS2_v2 \
+  --upgrade-policy-mode Automatic \
+  --app-gateway $AppGatewayName \
+  --custom-data cloud-init.txt \
+  --backend-pool-name appGatewayBackendPool \
+  --zones 1 2 3
+ ```
+ # Get the Application Gateway Public IP
+```
+az network public-ip show \
+  --resource-group $resourceGroupName \
+  --name $AppGWPublicIPAddressName \
+  --query [ipAddress] \
+  --output tsv
+ ```
+# Finish the Wordpress installation
+In your web browser, navigate to the Application Gateway Public IP and complete the Wordpress installation through the web interface:
+```
+https://application_gateway_public_ip
+```
+Select the language you would like to use:
+
+![language_selection.png](language_selection.png)
+
+Next, you will come to the main setup page.
+
+Select a name for your WordPress site and choose a username. It is recommended to choose something unique and avoid common usernames like “admin” for security purposes. A strong password is generated automatically. Save this password or select an alternative strong password.
+
+Enter your email address and select whether you want to discourage search engines from indexing your site:
+
+![setup_installation.png](setup_installation.png)
+
+When you click ahead, you will be taken to a page that prompts you to log in:
+
+![login_prompt.png](login_prompt.png)
+
+Once you log in, you will be taken to the WordPress administration dashboard:
+
+![admin_screen.png](admin_screen.png)
 
