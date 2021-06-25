@@ -4,4 +4,4 @@ This example scenario is a guidance on how to deploy a highly available and scal
 
 # Architecture
 
-![vmss-wordpress.png](vmss-wordpress.png)
+![appgw-wordpress.png](appgw-wordpress.png)
