@@ -347,7 +347,7 @@ az network public-ip show \
 # Finish the Wordpress installation
 In your web browser, navigate to the Application Gateway Public IP and complete the Wordpress installation through the web interface:
 ```
-https://application_gateway_public_ip
+http://application_gateway_public_ip
 ```
 Select the language you would like to use:
 
