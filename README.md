@@ -65,6 +65,8 @@ az network vnet create \
     --subnet-name $SubnetName  \
     --subnet-prefixes 10.0.0.0/24
 ```
+_Please note that the subnet created here will be the [dedicated subnet](https://docs.microsoft.com/en-us/azure/application-gateway/configuration-infrastructure#virtual-network-and-dedicated-subnet) to Application Gateway_
+
 # Create a Backend Subnet
 ```
 az network vnet subnet create \
